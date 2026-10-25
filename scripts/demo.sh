@@ -44,7 +44,9 @@ grep -q DDL_MINIFS_TARGET_READY "$DEMO/run/target.log" || { echo "target not rea
 OBJECTS=$(( ($(stat -c %s "$DEMO/rootfs.ext4") + OBJECT_SIZE - 1) / OBJECT_SIZE ))
 
 if [ "${INTERACTIVE:-0}" = 1 ]; then
-  # Shell on the serial console; type `poweroff -f` or `reboot -f` to leave.
+  # Shell on the serial console. Leave with `reboot -f` (poweroff/halt only halt the guest;
+  # Firecracker keeps running and the terminal hangs). Ctrl-C goes to the guest.
+  echo "[INTERACTIVE] exit the VM with: reboot -f"
   export BOOT_ARGS="console=ttyS0 reboot=k panic=1 pci=off root=/dev/vda ro rootfstype=ext4 init=/bin/bash"
   export VM_TIMEOUT="${VM_TIMEOUT:-3600}"
 fi
