@@ -41,7 +41,7 @@ cat > "$WORK/vm.json" <<JSON
 JSON
 rm -f "$WORK/fc.sock"
 set +e
-timeout "${VM_TIMEOUT:-120}" "$FIRECRACKER" --api-sock "$WORK/fc.sock" --config-file "$WORK/vm.json" \
+timeout --foreground "${VM_TIMEOUT:-120}" "$FIRECRACKER" --api-sock "$WORK/fc.sock" --config-file "$WORK/vm.json" \
   ${FC_ARGS:---no-seccomp} 2>&1 | tee "$WORK/vm.log"
 FC_RC=${PIPESTATUS[0]}
 set -e

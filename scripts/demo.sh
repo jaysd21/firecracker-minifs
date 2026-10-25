@@ -43,9 +43,15 @@ grep -q DDL_MINIFS_TARGET_READY "$DEMO/run/target.log" || { echo "target not rea
   --tenant 1 --object-hi $OBJECT_HI --object-start 1 --object-size $OBJECT_SIZE --timeout-seconds 60
 OBJECTS=$(( ($(stat -c %s "$DEMO/rootfs.ext4") + OBJECT_SIZE - 1) / OBJECT_SIZE ))
 
+if [ "${INTERACTIVE:-0}" = 1 ]; then
+  # Shell on the serial console; type `poweroff -f` or `reboot -f` to leave.
+  export BOOT_ARGS="console=ttyS0 reboot=k panic=1 pci=off root=/dev/vda ro rootfstype=ext4 init=/bin/bash"
+  export VM_TIMEOUT="${VM_TIMEOUT:-3600}"
+fi
 SERVER="$HOST_IP" PORT=$PORT TENANT=1 OBJECT_HI=$OBJECT_HI OBJECT_START=1 OBJECT_SIZE=$OBJECT_SIZE \
 OBJECTS=$OBJECTS KERNEL="$DEMO/dl/vmlinux-$KVER" FIRECRACKER="$FC" WORK="$DEMO/run/vm" \
   "$ROOT/scripts/run_microvm.sh" | tee "$DEMO/run/demo.out"
+[ "${INTERACTIVE:-0}" = 1 ] && exit 0
 
 expected=$(debugfs -R "cat /usr/bin/bash" "$DEMO/rootfs.ext4" 2>/dev/null | sha256sum | cut -d' ' -f1)
 grep -q "REMOTE_ROOTFS_BOOT_OK" "$DEMO/run/demo.out" || { echo "FAIL: guest did not report success"; exit 1; }
