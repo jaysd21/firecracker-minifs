@@ -1,0 +1,273 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "Guest read of 8 KiB at sector 2040: guest to DDL3",
+    "output": "docs/diagrams/sequence.html",
+    "quality_profile": "showcase"
+  },
+  "participants": [
+    {
+      "id": "guest",
+      "type": "frontend",
+      "label": "Guest Linux",
+      "sublabel": "ext4 + virtio-blk"
+    },
+    {
+      "id": "fc",
+      "type": "cloud",
+      "label": "Firecracker",
+      "sublabel": "vhost-user frontend"
+    },
+    {
+      "id": "vub",
+      "type": "backend",
+      "label": "VhostUserBlk",
+      "sublabel": "backend thread"
+    },
+    {
+      "id": "rd",
+      "type": "backend",
+      "label": "RemoteDisk",
+      "sublabel": "+ DiskMapping"
+    },
+    {
+      "id": "ad",
+      "type": "backend",
+      "label": "MiniFsAdapter",
+      "sublabel": "CoreClient owner"
+    },
+    {
+      "id": "ddl",
+      "type": "messagebus",
+      "label": "nebula_ddl3",
+      "sublabel": "ring + UCX"
+    },
+    {
+      "id": "tgt",
+      "type": "database",
+      "label": "MiniFS target",
+      "sublabel": "objects 1 and 2"
+    }
+  ],
+  "segments": [
+    {
+      "from": 150,
+      "to": 226,
+      "label": "Guest to backend"
+    },
+    {
+      "from": 240,
+      "to": 430,
+      "label": "Split and submit"
+    },
+    {
+      "from": 438,
+      "to": 602,
+      "label": "DDL3 GETs"
+    },
+    {
+      "from": 610,
+      "to": 850,
+      "label": "Complete and notify"
+    }
+  ],
+  "messages": [
+    {
+      "id": "kick",
+      "from": "guest",
+      "to": "fc",
+      "y": 170,
+      "label": "MMIO QueueNotify",
+      "variant": "emphasis",
+      "note": "ext4 page-cache miss: virtio-blk IN, sector 2040, 8 KiB"
+    },
+    {
+      "id": "kick-fd",
+      "from": "fc",
+      "to": "vub",
+      "y": 232,
+      "label": "kick eventfd",
+      "variant": "emphasis"
+    },
+    {
+      "id": "read",
+      "from": "vub",
+      "to": "rd",
+      "y": 262,
+      "label": "read(1044480, 8192)",
+      "variant": "emphasis",
+      "note": "walk descriptors in shared memfd; allocate bounce buffer"
+    },
+    {
+      "id": "get1",
+      "from": "rd",
+      "to": "ad",
+      "y": 345,
+      "label": "GET obj 1, off 1044480, 4096",
+      "variant": "emphasis",
+      "note": "DiskMapping splits at the 1 MiB object boundary"
+    },
+    {
+      "id": "get2",
+      "from": "rd",
+      "to": "ad",
+      "y": 414,
+      "label": "GET obj 2, off 0, 4096",
+      "variant": "emphasis"
+    },
+    {
+      "id": "sqe",
+      "from": "ad",
+      "to": "ddl",
+      "y": 446,
+      "label": "2 SQEs (opcode GET)",
+      "variant": "default"
+    },
+    {
+      "id": "ucx1",
+      "from": "ddl",
+      "to": "tgt",
+      "y": 476,
+      "label": "UCX GET obj 1",
+      "variant": "emphasis"
+    },
+    {
+      "id": "ucx2",
+      "from": "ddl",
+      "to": "tgt",
+      "y": 504,
+      "label": "UCX GET obj 2",
+      "variant": "emphasis"
+    },
+    {
+      "id": "data2",
+      "from": "tgt",
+      "to": "ddl",
+      "y": 532,
+      "label": "obj 2: 4096 B, OK",
+      "variant": "return",
+      "note": "completions may arrive in any order"
+    },
+    {
+      "id": "data1",
+      "from": "tgt",
+      "to": "ddl",
+      "y": 588,
+      "label": "obj 1: 4096 B, OK",
+      "variant": "return"
+    },
+    {
+      "id": "cqe",
+      "from": "ddl",
+      "to": "ad",
+      "y": 618,
+      "label": "CQE x2",
+      "variant": "return"
+    },
+    {
+      "id": "completions",
+      "from": "ad",
+      "to": "rd",
+      "y": 646,
+      "label": "Completion x2",
+      "variant": "return"
+    },
+    {
+      "id": "callback",
+      "from": "rd",
+      "to": "vub",
+      "y": 674,
+      "label": "callback(ok), once",
+      "variant": "return",
+      "note": "bytes already in bounce buffer"
+    },
+    {
+      "id": "copy",
+      "from": "vub",
+      "to": "guest",
+      "y": 732,
+      "label": "copy to guest RAM, used ring",
+      "variant": "return",
+      "note": "status byte = OK; shared memfd, no message"
+    },
+    {
+      "id": "call-fd",
+      "from": "vub",
+      "to": "fc",
+      "y": 790,
+      "label": "call eventfd",
+      "variant": "dashed"
+    },
+    {
+      "id": "irq",
+      "from": "fc",
+      "to": "guest",
+      "y": 818,
+      "label": "inject IRQ",
+      "variant": "return",
+      "note": "bio completes; read() returns data"
+    }
+  ],
+  "activations": [
+    {
+      "participant": "vub",
+      "from": 227,
+      "to": 797,
+      "type": "backend"
+    },
+    {
+      "participant": "rd",
+      "from": 257,
+      "to": 678,
+      "type": "backend"
+    },
+    {
+      "participant": "ad",
+      "from": 340,
+      "to": 650,
+      "type": "backend"
+    },
+    {
+      "participant": "ddl",
+      "from": 441,
+      "to": 622,
+      "type": "messagebus"
+    },
+    {
+      "participant": "tgt",
+      "from": 471,
+      "to": 592,
+      "type": "database"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Worked example",
+      "items": [
+        "Offset 1,044,480 is 4 KiB before the first 1 MiB object ends",
+        "So 8 KiB becomes two partial GETs: objects 1 and 2",
+        "Object id = (object-hi, object-start + index)"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Exactly once",
+      "items": [
+        "One callback after all chunks settle, never inside read()",
+        "Any chunk error fails the request: virtio status IOERR",
+        "Queue-full is retried a bounded number of times"
+      ]
+    },
+    {
+      "dot": "slate",
+      "title": "Source files",
+      "items": [
+        "process_queue / parse_chain / finish: vhost_user_blk.cc",
+        "read / map: remote_disk.cc, disk_mapping.cc",
+        "submit_get / poll: minifs_adapter.cc"
+      ]
+    }
+  ]
+}

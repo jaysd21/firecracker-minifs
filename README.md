@@ -43,6 +43,8 @@ scripts/demo.sh        # downloads Firecracker+kernel+rootfs, starts a local Min
                        # uploads the image, boots the VM from it, checks the guest output
 ```
 
+Diagrams: [architecture](docs/diagrams/architecture.html) and [guest read sequence](docs/diagrams/sequence.html) (open in a browser).
+
 Manual flow and every option: [docs/setup.md](docs/setup.md). Design: [docs/architecture.md](docs/architecture.md).
 Problems: [docs/troubleshooting.md](docs/troubleshooting.md).
 

@@ -1,0 +1,281 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Firecracker MiniFS Remote Disk: Architecture",
+    "output": "docs/diagrams/architecture.html",
+    "quality_profile": "showcase"
+  },
+  "components": [
+    {
+      "id": "guest",
+      "type": "frontend",
+      "label": "Guest Linux",
+      "sublabel": "ext4 + virtio-blk",
+      "pos": [
+        40,
+        200
+      ],
+      "size": [
+        140,
+        60
+      ]
+    },
+    {
+      "id": "fc",
+      "type": "cloud",
+      "label": "Firecracker",
+      "sublabel": "virtio-mmio, vhost-user",
+      "pos": [
+        290,
+        200
+      ],
+      "size": [
+        140,
+        60
+      ]
+    },
+    {
+      "id": "memfd",
+      "type": "database",
+      "label": "Guest RAM",
+      "sublabel": "shared memfd",
+      "pos": [
+        290,
+        40
+      ],
+      "size": [
+        140,
+        60
+      ]
+    },
+    {
+      "id": "vub",
+      "type": "backend",
+      "label": "VhostUserBlk",
+      "sublabel": "virtqueue + config",
+      "pos": [
+        540,
+        200
+      ],
+      "size": [
+        140,
+        60
+      ]
+    },
+    {
+      "id": "rd",
+      "type": "backend",
+      "label": "RemoteDisk",
+      "sublabel": "chunks, retry, limits",
+      "pos": [
+        790,
+        200
+      ],
+      "size": [
+        140,
+        60
+      ]
+    },
+    {
+      "id": "map",
+      "type": "backend",
+      "label": "DiskMapping",
+      "sublabel": "offset \u2192 object id",
+      "pos": [
+        790,
+        40
+      ],
+      "size": [
+        140,
+        60
+      ]
+    },
+    {
+      "id": "ad",
+      "type": "backend",
+      "label": "MiniFsAdapter",
+      "sublabel": "CoreClient wrapper",
+      "pos": [
+        790,
+        360
+      ],
+      "size": [
+        140,
+        60
+      ]
+    },
+    {
+      "id": "ddl",
+      "type": "messagebus",
+      "label": "nebula_ddl3",
+      "sublabel": "DDL3 client, UCX",
+      "pos": [
+        540,
+        360
+      ],
+      "size": [
+        140,
+        60
+      ]
+    },
+    {
+      "id": "tgt",
+      "type": "database",
+      "label": "MiniFS target",
+      "sublabel": "ddl_minifs_target_node",
+      "pos": [
+        290,
+        360
+      ],
+      "size": [
+        140,
+        60
+      ]
+    },
+    {
+      "id": "pop",
+      "type": "external",
+      "label": "minifs-populate",
+      "sublabel": "uploads image (PUT)",
+      "pos": [
+        290,
+        520
+      ],
+      "size": [
+        140,
+        60
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "security-group",
+      "label": "Firecracker process (microVM)",
+      "wraps": [
+        "guest",
+        "fc",
+        "memfd"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "remote-disk-backend (one owner thread)",
+      "wraps": [
+        "vub",
+        "rd",
+        "map",
+        "ad",
+        "ddl"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "guest-fc",
+      "from": "guest",
+      "to": "fc",
+      "label": "MMIO kick",
+      "variant": "emphasis"
+    },
+    {
+      "id": "fc-vub",
+      "from": "fc",
+      "to": "vub",
+      "label": "vhost-user",
+      "variant": "emphasis"
+    },
+    {
+      "id": "fc-memfd",
+      "from": "fc",
+      "to": "memfd",
+      "label": "backs",
+      "variant": "dashed"
+    },
+    {
+      "id": "vub-memfd",
+      "from": "vub",
+      "to": "memfd",
+      "label": "desc + data",
+      "variant": "dashed"
+    },
+    {
+      "id": "vub-rd",
+      "from": "vub",
+      "to": "rd",
+      "label": "read(off,len)",
+      "variant": "emphasis"
+    },
+    {
+      "id": "rd-map",
+      "from": "rd",
+      "to": "map",
+      "label": "split"
+    },
+    {
+      "id": "rd-ad",
+      "from": "rd",
+      "to": "ad",
+      "label": "GET \u00d7N",
+      "variant": "emphasis"
+    },
+    {
+      "id": "ad-ddl",
+      "from": "ad",
+      "to": "ddl",
+      "label": "SQE"
+    },
+    {
+      "id": "ddl-tgt",
+      "from": "ddl",
+      "to": "tgt",
+      "label": "UCX GET",
+      "variant": "emphasis"
+    },
+    {
+      "id": "pop-tgt",
+      "from": "pop",
+      "to": "tgt",
+      "label": "PUT",
+      "variant": "dashed"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Request path",
+      "items": [
+        "Guest kick reaches the backend as a kick eventfd",
+        "Backend reads descriptors from the shared memfd",
+        "RemoteDisk splits at object boundaries; each chunk is one partial GET"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Completion path",
+      "items": [
+        "GET data lands directly in a per-request bounce buffer",
+        "Reply flows back up: CQE \u2192 Completion \u2192 callback",
+        "Backend copies to guest RAM, updates used ring, signals call eventfd"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Boundaries",
+      "items": [
+        "Read-only: writes and flush get an error status",
+        "nebula_ddl3 is NebulaR's library, linked, not copied",
+        "minifs-populate is offline provisioning, not on the I/O path"
+      ]
+    },
+    {
+      "dot": "slate",
+      "title": "Source files",
+      "items": [
+        "vhost_user_blk.cc: virtqueue + protocol",
+        "remote_disk.cc, disk_mapping.cc: chunking",
+        "minifs_adapter.cc: CoreClient (NebulaR ddl3)"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "01ff8bbf-c14b-4a61-a189-a2617d5ea287",
+  "status": "current",
+  "command": "deliver",
+  "type": "sequence",
+  "input": "/home/jay/nebula-ai/firecracker-minifs/docs/diagrams/sequence.candidate.json",
+  "output": "/home/jay/nebula-ai/firecracker-minifs/docs/diagrams/sequence.html",
+  "specification": {
+    "sha256": "d4a3e4fabf38a2b6f5294e81bc684eef462a2e566de46de7985c736cc483cbf0",
+    "bytes": 5705
+  },
+  "artifact": {
+    "sha256": "ddd874784168e350cf7fd45e565bf43dc58829ea9f7e18e28e4e28217aa96d0d",
+    "bytes": 826048
+  }
+}
