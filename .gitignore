@@ -1,3 +1,7 @@
 build/
 *.img
 *.ext4
+tags
+docs/diagrams/*.finalize*.json
+docs/diagrams/*.delivery.json
+docs/diagrams/*.browser-check.json
